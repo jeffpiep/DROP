@@ -1,6 +1,6 @@
 '-----------------------------------------------------------
 '
-'					drop?
+'					DROP
 '
 '
 'For Atari 800XL 8-Bit BASIC 10-Liner
@@ -32,8 +32,6 @@ POKE 752,1 : rem cursor off
 'initialize some stuff here to optimize line usage
 S=15
 TURNS=4
-
-
 
 'copy the ROM character set for modification
 MOVE $E000,$B400,512
