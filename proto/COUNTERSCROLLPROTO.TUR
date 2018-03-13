@@ -1,0 +1,61 @@
+'-----------------------------------------------------------
+'
+'					drop?
+'
+'
+'For Atari 800XL 8-Bit BASIC 10-Liner
+'One-player game with joystick
+'
+'Jeff Piepmeier
+'March 5, 2018
+'http://jeffpiepmeier.blogspot.com/
+'http://github.com/jeffpiep/
+'
+'Parsed with TurboBASIC XL Parser Tool 
+'http://github.com/dmsc/tbxl-parser
+$options +optimize, optimize=-convert_percent-const_replace
+'Tested on Altirra
+'-----------------------------------------------------------
+
+GRAPHICS 7
+  REM AFA2: x3   blank 8
+  REM AFA5:      mode D @ B060
+  REM AFA8: x79  mode D
+  REM AFF7:      mode 2 @ BF60
+  REM AFFA: x3   mode 2
+  REM AFFD:      waitvbl AFA2
+MOVE ADR("\47\60\B0\47\C4\B0\47\74\B0\47\D8\B0\47\88\B0\47\EC\B0\47\9C\B0\47\00\B1\47\B0\B0\47\14\B1\42\60\BF\02\02\02\41\A5\AF"),$AFA5,39
+GRPA = $B060
+GRPB = $B0C4
+
+FOR I=0 TO 99
+    POKE GRPA+I,RAND(64)
+    POKE GRPB+I,RAND(64)
+NEXT I
+
+'START THE GAME TIMER FOR 120 SECOND GAME
+BASETIME=TIME DIV 60 + 120
+
+'GAME LOOP
+REPEAT
+'UPDATE GAME TIMER AND SCORE
+XTIME=BASETIME-(TIME DIV 60)
+POKE 657,2
+?XTIME,SCORE;
+
+'GET JOYSTICK INPUT: NORMALLY PUT AT TOP OF LOOP, BUT NEED DOWN HERE FOR CODE LENGTH OPTIMIZATION
+S=STICK(0)
+LR=(S&4=0)-(S&8=0):REM REVERSE LEFT RIGHT DIRECTION
+UD=(S&2=0)-(S&1=0):REM CREATE +/1 VALUES FOR LEFT/RIGHT AND UP/DOWN	
+
+PAUSE(0)
+MOVE GRPA+1,GRPA,99
+-MOVE GRPB,GRPB+1,99
+DPOKE GRPB-1,257*RAND(64)
+
+UNTIL XTIME=0
+Z=0: REM NEEDED TO ASSIGN VARIABLE FOR 0 TO REUSE FOR BASIC TOKENIZING OPTIMIZATION
+'TURN OF ALL SOUNDS
+SOUND
+?,"GAME OVER";
+DO:LOOP

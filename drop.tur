@@ -1,0 +1,211 @@
+'-----------------------------------------------------------
+'
+'					drop?
+'
+'
+'For Atari 800XL 8-Bit BASIC 10-Liner
+'One-player game with joystick
+'
+'Jeff Piepmeier
+'March 5, 2018
+'http://jeffpiepmeier.blogspot.com/
+'http://github.com/jeffpiep/
+'
+'Parsed with TurboBASIC XL Parser Tool 
+'http://github.com/dmsc/tbxl-parser
+$options +optimize, optimize=-convert_percent-const_replace
+'Tested on Altirra
+'-----------------------------------------------------------
+
+GRAPHICS 7
+  REM AFA2: x3   blank 8
+  REM AFA5:      mode D @ B060
+  REM AFA8: x79  mode D
+  REM AFF7:      mode 2 @ BF60
+  REM AFFA: x3   mode 2
+  REM AFFD:      waitvbl AFA2
+'new DLIST
+A=ADR("\42\60\BF\02\02\02\47\60\B0\47\C4\B0\47\74\B0\47\D8\B0\47\88\B0\47\EC\B0\47\9C\B0\47\00\B1\47\B0\B0\47\14\B1\41\A2\AF\55\AA\55\AA\55\AA\55\AA\18\3C\7E\6A\7E\3C\24\36\18\3C\7E\56\7E\3C\24\6C\00\02\04\06\08\01\03\05\07\09")
+MOVE A,$AFA5,39 : rem new display list
+POKE 752,1 : rem cursor off
+
+'initialize some stuff here to optimize line usage
+S=15
+TURNS=4
+
+
+
+'copy the ROM character set for modification
+MOVE $E000,$B400,512
+MOVE A+39,$B408,24
+POKE 756,$B4
+
+'LUT of row addresses and order
+DIM ROWS(9,1)
+FOR I=0 TO 9
+    ROWS(I,0)=PEEK(I+A+63)
+    ROWS(I,1)=DPEEK(A+3*I+7)
+NEXT I
+GRPA = ROWS(2,1) : REM $B074
+GRPB = ROWS(1,1) : REM $B0C4
+
+'make random play field
+FOR I=0 TO 79
+    POKE GRPA+I,RND<.7
+    POKE GRPB+I,RND<.7
+NEXT I
+
+'initialize some stuff
+GUYAD = DPEEK(A+7)
+BASETIME=TIME + 3000
+
+
+POKE 657,16
+? "# DROP """
+?
+
+'GAME LOOP
+REPEAT
+
+
+    'UPDATE GAME TIMER AND SCORE
+    XTIME=BASETIME-TIME
+    POKE 657,18
+    ?XTIME*(XTIME>0);"  "; : REM ,SCORE;
+    '?GROW,GCOL,GUYAD;
+    '?S;
+    J = (J+1) MOD (TURNS+1)
+    'GET JOYSTICK INPUT
+    'LOGIC NEEDED
+    '   NO UP ON TOP ROW
+    '   GAME WON ON BOTTOM ROW
+    '   DONE: NO LEFT IF AT LEFT EDGE & NO RIGHT IF AT RIGHT EDGE
+    '   NO LEFT/RIGHT/UP/DOWN IF BLOCKED (NEXT TRY IS MINING ACTION)
+    '   IF LEFT/RIGHT, SIMPLE GUY ADDRESS UPDATE
+    '   IF DOWN/UP, THEN UPDATE GUY ADDRESS WITH ROW CHANGE
+    '
+    ' logic for no rapid stick
+    ' no stick = 15; stick = 0 in direction
+    ' if was 0 in some direction, then now 1 in that direction
+    ' if was 1 in some direction, then now 1 or 0 in that direction
+    ' old   new   result
+    ' 1     1       1
+    ' 1     0       0
+    ' 0     0       1
+    ' 0     1       1
+    ' only 1 & 0 = 0, all else is 1
+    ' how about: not (A xor B) or B
+    ' or this one: B or not A 
+
+    GROW = ROWS((GUYAD-ROWS(0,1)) DIV 20,0)
+    ODD = (GROW MOD 2)
+    GCOL = (GUYAD-ROWS(0,1)) MOD 20
+    SOUND
+
+    IF J<TURNS
+
+        S0=S
+        S=STICK(0)
+        STK=(15-S)!S0 
+        'LR=((STK&8=0)&(GCOL<19))-((STK&4=0)&(GCOL>0)):REM CREATE +/1 VALUES LEFT/RIGHT
+        LR=0
+        UD=(STK&2=0)-((STK&1=0)&(GROW>0)):REM CREATE +/1 VALUES UP/DOWN	
+
+        TARGET = ROWS(GROW+UD,1)+GCOL+LR
+        PT=PEEK(TARGET)
+
+        ' DROP LOGIC
+        '      IF DOWN AND BLANK, THEN KEEP TRYING UNTIL EITHER ROW 9 OR PT=1
+        
+        
+        IF PT=1
+            SOUND 0,55,12,10
+            BASETIME=BASETIME-100
+        ELSE
+            REM IF UD<1
+                REM SOUND 0,100,10,0
+                REM POKE GUYAD,0
+                REM GUYAD=TARGET
+                REM POKE GUYAD,$42+ODD : REM $42+EVN
+            REM ELSE : REM UD = 1
+                SOUND 0,100,10,10*(UD=1)
+                REPEAT 
+                    POKE GUYAD,0
+                    GUYAD=TARGET
+                    POKE GUYAD,$42+ODD : REM $42+EVN
+                    GROW=GROW+1
+                    WON=(GROW=9)
+                    IF WON ! (UD<1) : EXIT : ENDIF 
+                    ODD = (GROW MOD 2)
+                    TARGET = ROWS(GROW+1,1)+GCOL
+                    PT=PEEK(TARGET)
+                UNTIL (PT=1)
+                IF WON : EXIT : ENDIF
+            REM ENDIF 
+        ENDIF
+
+        
+    ELSE
+
+        'GROW = ROWS((GUYAD-ROWS(0,1)) DIV 20,0)
+        'GCOL = (GUYAD-ROWS(0,1)) MOD 20
+        '
+        'WHAT TO DO WHEN AT THE EDGE OF THE SCREEN
+        '   IF AT LEFT EDGE IN ODD ROW, THEN GET BUMPED UP TO PREVIOUS EVEN ROW
+        '   IF AT RIGHT EDGE IN EVEN ROW, THEN GET BUMPED UP TO PREVIOUS ODD ROW
+        RT = ( (1-ODD) & (GCOL = 19) )
+        LT = ( ODD & (GCOL = 0)  )
+        IF ( RT ! LT ) 
+            POKE GUYAD,0
+            IF GROW>0
+                SOUND 0,25,12,10
+                GROW=GROW-1
+                ODD = NOT ODD
+                TARGET = ROWS(GROW,1)+GCOL
+                BASETIME=BASETIME-200
+            ELSE
+                GCOL=(GCOL+1) MOD 20
+                TARGET = ROWS(GROW,1)+GCOL
+            ENDIF
+            GUYAD=TARGET
+            POKE GUYAD,$42+ODD
+        ENDIF
+
+        'LOGIC NEEDED
+        '   STORE DANGLING VALUES
+        '   RETRACT GROUP B BUFFER BY 1
+        '   ADVANCE GROUP A BUFFER BY 1
+        '   RESTORE DANGLING VALUES INTO OPPOSITE BUFFERS
+        T1=PEEK(GRPB)
+        MOVE GRPB+1,GRPB,79
+        T2=PEEK(GRPB-1)
+        -MOVE GRPA,GRPA+1,79
+        POKE GRPB+79,T2
+        POKE GRPA,T1
+        IF GROW=0
+            POKE GUYAD,0
+        ENDIF
+        GUYAD=GUYAD - ODD + (ODD = 0)
+'        GUYAD=GUYAD - (GROW MOD 2) + (GROW MOD 2 = 0)
+        POKE GUYAD,$42+ODD
+    ENDIF
+    
+UNTIL XTIME<1
+? : SOUND
+IF WON
+    A=ADR("\00\00\48\48\51\51\51\60\79\6C\79\6C\60\60\00\00\48\48\51\51\51\60\79\6C\79\79\79\79")
+    ?,"WINNER";   
+    FOR I=0 TO 27
+        PAUSE(14)
+        SOUND
+        SOUND 0,PEEK(A+I),10,12
+    NEXT I
+    SOUND
+ELSE
+    ?,"GAME OVER";
+    SOUND 0,70,12,10
+    PAUSE 20
+ENDIF
+SOUND
+?" - PRESS FIRE";
+WHILE STRIG(0) : WEND : RUN
