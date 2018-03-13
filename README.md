@@ -8,4 +8,6 @@ DROP is a single player game using joystick. Manuever your guy up or down throug
 
 The [ATR](https://github.com/jeffpiep/DROP/blob/master/DROPTBXL.atr?raw=true) file contains the auto-loading program. Recommend to boot with Altirra.
 
+[YouTube Video](https://youtu.be/ZzicI8xO0Yg)
+
 ![screenshot](https://github.com/jeffpiep/DROP/blob/master/screenshot.png?raw=true)
